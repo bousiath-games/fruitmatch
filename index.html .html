@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fruit Match – Jeu de puzzle gratuit</title>
+<meta name="description" content="Alignez 3 fruits ou plus pour marquer des points. Jeu de puzzle gratuit en ligne.">
+<!-- ADSENSE : décommente et remplace ca-pub-XXXXXXXXXXXXXXXX par ton ID après approbation -->
+<!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,sans-serif;background:linear-gradient(#ffd8e8,#fff3c4);color:#4a2040;text-align:center;padding:10px}
+h1{margin:6px 0;font-size:1.6rem}
+.bar{display:flex;justify-content:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.bar div{background:#fff;border-radius:12px;padding:6px 14px;font-weight:700;box-shadow:0 2px 0 #0002}
+#board{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;width:min(94vw,440px);margin:10px auto;background:#fff8;padding:6px;border-radius:16px}
+.t{aspect-ratio:1;border:0;border-radius:10px;background:#fff;font-size:min(7.5vw,32px);cursor:pointer;transition:transform .15s,opacity .2s;padding:0}
+.t.sel{background:#ffe08a;transform:scale(1.12)}
+.t.pop{opacity:0;transform:scale(.3)}
+button.main{background:#e84a7f;color:#fff;border:0;border-radius:12px;padding:10px 22px;font-size:1rem;font-weight:700;cursor:pointer}
+#msg{min-height:1.5em;font-weight:700}
+.ad{margin:12px auto;max-width:728px;min-height:90px}
+.how{max-width:520px;margin:20px auto;text-align:left;font-size:.95rem;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>🍓 Fruit Match</h1>
+<div class="bar">
+  <div>Niveau <span id="lvl">1</span></div>
+  <div>Score <span id="score">0</span>/<span id="goal">500</span></div>
+  <div>Coups <span id="moves">20</span></div>
+</div>
+<div id="msg"></div>
+<div id="board"></div>
+<button class="main" id="restart">Rejouer</button>
+
+<!-- PUB : bannière placée SOUS le jeu, loin des boutons (règle AdSense : pas de clics accidentels) -->
+<div class="ad">
+  <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="YYYYYYYYYY" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  <script>(adsbygoogle=window.adsbygoogle||[]).push({});</script> -->
+</div>
+
+<section class="how">
+  <h2>Comment jouer ?</h2>
+  <p>Touchez un fruit puis un fruit voisin pour les échanger. Alignez au moins 3 fruits identiques (horizontalement ou verticalement) pour les faire disparaître et gagner des points. Les combos rapportent plus ! Atteignez l'objectif avant la fin de vos coups pour passer au niveau suivant.</p>
+</section>
+<footer style="font-size:.8rem;margin:20px 0"><a href="privacy.html">Politique de confidentialité</a></footer>
+
+<script>
+const F=['🍓','🍊','🍋','🍏','🍇','🫐'],N=8;
+let g,sel=null,score,moves,lvl=1,goal,busy=false;
+const $=id=>document.getElementById(id),B=$('board');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const rnd=()=>Math.floor(Math.random()*F.length);
+
+function init(l){
+  lvl=l;score=0;moves=20;goal=300+l*200;busy=false;sel=null;$('msg').textContent='';
+  do{
+    g=Array.from({length:N},()=>Array(N).fill(0));
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+      let v;do{v=rnd()}while((c>1&&g[r][c-1]==v&&g[r][c-2]==v)||(r>1&&g[r-1][c]==v&&g[r-2][c]==v));
+      g[r][c]=v;
+    }
+  }while(!hasMove());
+  draw();
+}
+function draw(pop=new Set()){
+  B.innerHTML='';
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const b=document.createElement('button');
+    b.className='t'+(sel&&sel[0]==r&&sel[1]==c?' sel':'')+(pop.has(r+','+c)?' pop':'');
+    b.textContent=g[r][c]<0?'':F[g[r][c]];
+    b.onclick=()=>tap(r,c);
+    B.appendChild(b);
+  }
+  $('lvl').textContent=lvl;$('score').textContent=score;$('goal').textContent=goal;$('moves').textContent=moves;
+}
+function matches(){
+  const s=new Set();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=g[r][c];if(v<0)continue;
+    if(c<N-2&&g[r][c+1]==v&&g[r][c+2]==v)[0,1,2].forEach(i=>s.add(r+','+(c+i)));
+    if(r<N-2&&g[r+1][c]==v&&g[r+2][c]==v)[0,1,2].forEach(i=>s.add((r+i)+','+c));
+  }
+  return s;
+}
+function swap(a,b){[g[a[0]][a[1]],g[b[0]][b[1]]]=[g[b[0]][b[1]],g[a[0]][a[1]]]}
+function hasMove(){
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++)for(const [dr,dc] of [[0,1],[1,0]]){
+    const r2=r+dr,c2=c+dc;if(r2>=N||c2>=N)continue;
+    swap([r,c],[r2,c2]);const ok=matches().size>0;swap([r,c],[r2,c2]);if(ok)return true;
+  }
+  return false;
+}
+async function tap(r,c){
+  if(busy||moves<=0)return;
+  if(!sel){sel=[r,c];draw();return}
+  const [r0,c0]=sel;
+  if(r0==r&&c0==c){sel=null;draw();return}
+  if(Math.abs(r0-r)+Math.abs(c0-c)!=1){sel=[r,c];draw();return}
+  busy=true;sel=null;
+  swap([r0,c0],[r,c]);draw();await sleep(150);
+  if(!matches().size){swap([r0,c0],[r,c]);draw();busy=false;return}
+  moves--;
+  let combo=1,m;
+  while((m=matches()).size){
+    score+=m.size*10*combo;combo++;
+    draw(m);await sleep(250);
+    m.forEach(k=>{const [a,b]=k.split(',');g[a][b]=-1});
+    for(let c2=0;c2<N;c2++){
+      const col=[];for(let r2=N-1;r2>=0;r2--)if(g[r2][c2]>=0)col.push(g[r2][c2]);
+      while(col.length<N)col.push(rnd());
+      for(let r2=0;r2<N;r2++)g[N-1-r2][c2]=col[r2];
+    }
+    draw();await sleep(200);
+  }
+  if(!hasMove()){init2()}
+  draw();busy=false;
+  if(score>=goal){$('msg').textContent='🎉 Niveau réussi !';busy=true;await sleep(1500);init(lvl+1)}
+  else if(moves<=0){$('msg').textContent='😢 Perdu ! Appuyez sur Rejouer';busy=true}
+}
+function init2(){ // remélange si plus de coups possibles
+  do{for(let r=0;r<N;r++)for(let c=0;c<N;c++)g[r][c]=rnd()}while(matches().size||!hasMove());
+}
+$('restart').onclick=()=>init(1);
+init(1);
+</script>
+</body>
+</html>
